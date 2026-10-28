@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lição 0002: Ciclo 1 — Séries Temporais, Lags Climáticos & Zero Data Leakage</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="lesson-meta">Lição 0002 • Ciclo 1 de Aprendizado • Projeto IC</div>
+      <h1>Ciclo 1: Séries Temporais Hospitalares, Lags Climáticos & Prevenção de Data Leakage</h1>
+      <p class="subtitle">Como modelar a dinâmica temporal de leitos no RS, calcular defasagens epidemiológicas sem vazamento do futuro e substituir o split aleatório por validação científica rigorosa.</p>
+      <div class="badges">
+        <span class="badge warm">Temporal Data Leakage</span>
+        <span class="badge primary">TimeSeriesSplit</span>
+        <span class="badge warm">Lags Epidemiológicos (RS)</span>
+        <span class="badge green">ColumnTransformer</span>
+        <span class="badge">Métricas: WAPE & MAE</span>
+      </div>
+    </header>
+
+    <main>
+      <!-- SEÇÃO 1: DADOS ESTÁTICOS VS TEMPORAIS -->
+      <section>
+        <h2>1. O Axioma Fundamental: Dados de Saúde Não São i.i.d.</h2>
+        <p>A maioria dos tutoriais introdutórios de machine learning trabalha com dados <strong>i.i.d. (independentes e identicamente distribuídos)</strong>. Por exemplo, em um dataset imobiliário (como o Ames Housing usado em <code>fontes/untitled1.py</code>), a casa número 42 ter 3 quartos é um evento independente da casa número 43 ter 2 quartos.</p>
+        
+        <p>Em um hospital universitário como o <strong>Hospital de Clínicas de Porto Alegre (HCPA)</strong>, a realidade é o oposto:</p>
+        <div class="callout concept">
+          <div class="callout-title">Autocorrelação Temporal e Efeitos de Memória</div>
+          <p>O número de leitos ocupados hoje ($y_t$) é fortemente dependente do número de leitos ocupados ontem ($y_{t-1}$) e nos dias anteriores. Pacientes internados em UTI possuem tempo médio de permanência (<em>Length of Stay - LoS</em>) de 7 a 14 dias; leitos clínicos de infectologia têm giro de 5 a 10 dias. Existe uma <strong>memória de estado</strong> no sistema hospitalar que quebra a independência entre amostras.</p>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 2: TEMPORAL DATA LEAKAGE -->
+      <section>
+        <h2>2. A Anatomia do Temporal Data Leakage (Look-Ahead Bias)</h2>
+        <p>Vamos analisar detalhadamente o código original em <code>fontes/untitled1.py</code>:</p>
+
+        <pre><code class="language-python"># fontes/untitled1.py (linhas 30-31)
+df = pd.read_csv(csv_path)
+train, test = train_test_split(df, test_size=0.25, random_state=42)
+</code></pre>
+
+        <p>Quando executamos <code>train_test_split</code> com amostragem aleatória sobre uma série temporal, acontece o seguinte fenômeno:</p>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Data da Amostra</th>
+                <th>Contexto Epidemiológico no RS</th>
+                <th>Conjunto no Split Aleatório</th>
+                <th>Problema Metodológico</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>02/Maio/2024</td>
+                <td>Guaíba atinge cota de inundação; início dos resgates</td>
+                <td><strong>TESTE</strong></td>
+                <td>O modelo tenta prever a demanda deste dia...</td>
+              </tr>
+              <tr>
+                <td>05/Maio/2024</td>
+                <td>Pico histórico da enchente; hospitais em plano de crise</td>
+                <td><strong>TREINO</strong></td>
+                <td>...mas o modelo já "viu" o dia 05/05 durante o treino!</td>
+              </tr>
+              <tr>
+                <td>18/Maio/2024</td>
+                <td>Primeiros casos e internações por Leptospirose</td>
+                <td><strong>TESTE</strong></td>
+                <td>Tentamos prever as internações de leptospirose...</td>
+              </tr>
+              <tr>
+                <td>25/Maio/2024</td>
+                <td>Pico de notificações e superlotação de leitos clínicos</td>
+                <td><strong>TREINO</strong></td>
+                <td>...tendo no treino o conhecimento do desfecho final do mês.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout warning">
+          <div class="callout-title">Consequência no Artigo / Seleção da Bolsa</div>
+          <p>O modelo aprenderá a interpolar o passado com base no futuro que ele já viu no treino. As métricas parecerão espetaculares ($R^2 > 0.95$), mas se esse modelo for levado a um hospital de verdade na próxima chuva, o erro será astronômico. Na banca avaliadora, a primeira pergunta de um orientador experiente será: <em>"Como você garantiu que não houve vazamento temporal?"</em> Se a resposta for <code>train_test_split</code>, o projeto perde a credibilidade científica.</p>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 3: VALIDAÇÃO TEMPORAL CORRETA -->
+      <section>
+        <h2>3. A Solução: Divisão Temporal Estrita (TimeSeriesSplit & Rolling Origin)</h2>
+        <p>Para avaliar modelos preditivos em séries temporais com rigor científico, o conjunto de treino deve <strong>sempre anteceder cronologicamente</strong> o conjunto de teste:</p>
+
+        <pre><code class="language-python">from sklearn.model_selection import TimeSeriesSplit
+
+# Configuração com 5 janelas temporais de expansão (Rolling Origin)
+tscv = TimeSeriesSplit(n_splits=5, test_size=30)  # Testa sempre os próximos 30 dias
+
+for fold, (train_idx, test_idx) in enumerate(tscv.split(df_sorted)):
+    train_data = df_sorted.iloc[train_idx]
+    test_data = df_sorted.iloc[test_idx]
+    
+    print(f"Fold {fold}: Treino até {train_data['data'].max()} | Teste de {test_data['data'].min()} a {test_data['data'].max()}")
+</code></pre>
+
+        <p>Dessa forma, simula-se exatamente o que o hospital vivencia: estar no dia $T$, com todo o histórico passado até $T$, e prever a janela de $T+1$ até $T+30$.</p>
+      </section>
+
+      <!-- SEÇÃO 4: ENGENHARIA DE LAGS CLIMÁTICOS -->
+      <section>
+        <h2>4. Engenharia de Defasagens (Lags) Climáticas no Rio Grande do Sul</h2>
+        <p>Os eventos climáticos (chuva torrencial medida pelo CEMADEN e temperaturas do INMET) não enchem leitos no mesmo instante. A biologia e a infraestrutura impõem atrasos:</p>
+
+        <div class="card">
+          <h4>Construção Correta de Lags e Médias Móveis sem Vazamento</h4>
+          <p>Ao criar médias móveis e defasagens, devemos garantir que a informação do dia atual <strong>não seja utilizada</strong> para prever o dia atual, ou que utilizemos apenas dados disponíveis antes do momento da previsão:</p>
+          <pre><code class="language-python"># Ordenação cronológica obrigatória por hospital/região
+df = df.sort_values(by=["hospital_id", "data"]).reset_index(drop=True)
+
+# 1. Defasagens pontuais (Lags exatos)
+df["chuva_lag_1d"] = df.groupby("hospital_id")["precipitacao_mm"].shift(1)
+df["chuva_lag_7d"] = df.groupby("hospital_id")["precipitacao_mm"].shift(7)
+df["chuva_lag_14d"] = df.groupby("hospital_id")["precipitacao_mm"].shift(14)  # Período de incubação Leptospirose
+
+# 2. Acumulados móveis no PASSADO (closed='left' impede o dia de hoje de entrar na média)
+df["chuva_acum_7d"] = (
+    df.groupby("hospital_id")["precipitacao_mm"]
+    .rolling(window=7, closed="left")
+    .sum()
+    .reset_index(level=0, drop=True)
+)
+
+# 3. Lags de ocupação (Quantos leitos estavam ocupados há 1 e 7 dias)
+df["leitos_lag_1d"] = df.groupby("hospital_id")["leitos_ocupados"].shift(1)
+df["leitos_lag_7d"] = df.groupby("hospital_id")["leitos_ocupados"].shift(7)
+</code></pre>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 5: PREPROCESSAMENTO SEGURO -->
+      <section>
+        <h2>5. Refatoração do Pré-processamento: ColumnTransformer vs <code>pd.get_dummies</code></h2>
+        <p>No código base em <code>fontes/untitled1.py</code>, as variáveis categóricas são tratadas assim:</p>
+        <pre><code class="language-python"># fontes/untitled1.py (linhas 101-103)
+X = pd.get_dummies(X)
+self.feature_columns = X.columns
+self.model.fit(X, y)
+</code></pre>
+
+        <div class="callout warning">
+          <div class="callout-title">O Risco do pd.get_dummies Solto</div>
+          <p>Se no conjunto de teste aparecer uma nova categoria hospitalar (por exemplo, um hospital de campanha aberto durante a enchente, como o de Canoas em 2024), <code>pd.get_dummies</code> criará uma nova coluna que o modelo nunca viu no treino. O código tentará reindexar com <code>fill_value=0</code>, mas categorias raras no treino podem inflar desnecessariamente o espaço de features.</p>
+          <p><strong>A Abordagem Científica:</strong> Utilizar <code>ColumnTransformer</code> e <code>OneHotEncoder(handle_unknown='ignore')</code> inseridos dentro de um <code>Pipeline</code> do scikit-learn. O pipeline garante que o codificador seja ajustado (<em>fitted</em>) exclusivamente nos dados de treino.</p>
+        </div>
+
+        <pre><code class="language-python">from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.pipeline import Pipeline
+
+cat_cols = ["tipo_leito", "hospital_id", "estacao_ano"]
+num_cols = ["chuva_lag_7d", "chuva_lag_14d", "temperatura_max", "leitos_lag_1d"]
+
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("num", StandardScaler(), num_cols),
+        ("cat", OneHotEncoder(handle_unknown="ignore", sparse_output=False), cat_cols),
+    ]
+)
+</code></pre>
+      </section>
+
+      <!-- SEÇÃO 6: MÉTRICAS HOSPITALARES -->
+      <section>
+        <h2>6. Métricas Científicas em Saúde: Além do R²</h2>
+        <p>Em gestão hospitalar, métricas abstratas como $R^2$ não respondem às perguntas práticas dos diretores de hospitais escola. Utilizamos uma tríade de métricas:</p>
+
+        <div class="grid-2">
+          <div class="card">
+            <h4>MAE (Mean Absolute Error)</h4>
+            <p>Representa o desvio médio em unidades reais de leitos:</p>
+            <p><code>MAE = (1/n) * Σ |y - ŷ|</code></p>
+            <p><em>Exemplo clínico:</em> Um MAE de 3.2 leitos significa que a previsão erra, em média, por cerca de 3 a 4 vagas por dia.</p>
+          </div>
+          <div class="card">
+            <h4>WAPE (Weighted Absolute Percentage Error)</h4>
+            <p>Normaliza o erro pela demanda total de leitos:</p>
+            <p><code>WAPE = (Σ |y - ŷ|) / (Σ y)</code></p>
+            <p>Resolve o problema do MAPE clássico (que divide por zero ou explode quando a ocupação de leitos específicos é muito baixa).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 7: AUTOAVALIAÇÃO -->
+      <section>
+        <h2>7. Perguntas de Fixação para a Banca (Ciclo 1)</h2>
+        <div class="question-box">
+          <h4>Simulação de Arguição</h4>
+          <ol>
+            <li><strong>Pergunta:</strong> <em>"Por que em uma série hospitalar de Porto Alegre não podemos usar a média móvel de chuva calculada com <code>center=True</code>?"</em><br>
+            <strong>Resposta-chave:</strong> Porque a janela centrada olha metade para o passado e metade para o futuro (dia $t-3$ até dia $t+3$), vazando informações dos dias seguintes diretamente para a predição de hoje.</li>
+            <li><strong>Pergunta:</strong> <em>"Se o TabPFN for alimentado com dados com vazamento temporal, o que acontecerá com o tempo de inferência ou com o erro?"</em><br>
+            <strong>Resposta-chave:</strong> O tempo de inferência não se altera (depende do número de tokens), mas a acurácia será artificialmente alta, mascarando a incapacidade do modelo de generalizar para crises reais futuras.</li>
+          </ol>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div><a href="./0001-conteudo-programatico-ml-tabular-leitos-rs.html">← Lição Anterior (Visão Geral)</a></div>
+      <div><a href="./0003-ciclo-2-anatomia-e-teoria-do-tabpfn.html">Próxima Lição (Ciclo 2: TabPFN) →</a></div>
+    </footer>
+  </div>
+</body>
+</html>

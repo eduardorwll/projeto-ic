@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lição 0005: Ciclo 4 — Validação Científica, TDD & Guia de Defesa na Banca de IC</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="lesson-meta">Lição 0005 • Ciclo 4 de Aprendizado • Projeto IC</div>
+      <h1>Ciclo 4: Validação Científica Completa, TDD & Guia de Defesa na Banca de IC</h1>
+      <p class="subtitle">Como integrar engenharia de dados temporais, wrappers de modelos fundacionais, testes automatizados e domínio conceitual para conquistar a aprovação na bolsa de pesquisa.</p>
+      <div class="badges">
+        <span class="badge primary">Pipeline Integrado</span>
+        <span class="badge warm">Test-Driven Development (TDD)</span>
+        <span class="badge green">Interpretabilidade SHAP</span>
+        <span class="badge warm">Guia da Banca de IC</span>
+        <span class="badge">Ética & Saúde Pública</span>
+      </div>
+    </header>
+
+    <main>
+      <!-- SEÇÃO 1: ARQUITETURA DO PIPELINE CIENTÍFICO -->
+      <section>
+        <h2>1. A Arquitetura Limpa do Pipeline Científico</h2>
+        <p>No código inicial em <code>fontes/untitled1.py</code>, todo o fluxo estava compactado em um único script com comandos de notebook e sem modularização formal. Para um projeto científico financiado por agências de fomento (CNPq, FAPERGS, CAPES), o código deve ser <strong>modular, testável e reprodutível</strong>:</p>
+
+        <div class="card">
+          <h4>Estrutura Arquitetural Recomendada (Clean Architecture)</h4>
+          <ul>
+            <li><strong><code>src/data/</code>:</strong> Ingestão de dados meteorológicos (INMET/CEMADEN) e hospitalares do RS; geração de lags e janelas móveis com ordenação cronológica estrita.</li>
+            <li><strong><code>src/preprocessing/</code>:</strong> Pipeline do scikit-learn com <code>ColumnTransformer</code>, imputação de dados faltantes e <code>OneHotEncoder(handle_unknown='ignore')</code>.</li>
+            <li><strong><code>src/models/</code>:</strong> Wrappers padronizados com interface unificada (<code>BaseModelWrapper</code>) contendo <code>RandomForestWrapper</code>, <code>TabPFNWrapper</code> e <code>MitraWrapper</code>.</li>
+            <li><strong><code>src/evaluation/</code>:</strong> Métricas hospitalares reais (MAE, RMSE, WAPE) calculadas via <code>TimeSeriesSplit</code>.</li>
+            <li><strong><code>tests/</code>:</strong> Suíte de testes unitários automatizados com <code>pytest</code>.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 2: TDD NA PESQUISA CIENTÍFICA -->
+      <section>
+        <h2>2. Test-Driven Development (TDD) Aplicado à Ciência de Dados</h2>
+        <p>Muitos pesquisadores acreditam que TDD só serve para desenvolvimento web ou sistemas bancários. Na ciência de dados, testes automatizados são a <strong>única barreira contra conclusões falsas e artigos retratados</strong>:</p>
+
+        <div class="callout concept">
+          <div class="callout-title">O Ciclo Red-Green-Refactor na Pesquisa</div>
+          <ol>
+            <li><strong>Red (Vermelho):</strong> Escreva primeiro um teste que falhe comprovando uma hipótese metodológica (por exemplo: testar se nenhuma data de teste é anterior a uma data de treino no split).</li>
+            <li><strong>Green (Verde):</strong> Escreva o código estritamente necessário para fazer o teste passar.</li>
+            <li><strong>Refactor (Refatorar):</strong> Melhore o código, elimine duplicações e otimize o uso de memória mantendo todos os testes verdes.</li>
+          </ol>
+        </div>
+
+        <h3>Exemplo Real: Teste Unitário contra Data Leakage Temporal</h3>
+        <pre><code class="language-python"># tests/test_temporal_split.py
+import pytest
+import pandas as pd
+from sklearn.model_selection import TimeSeriesSplit
+
+def test_time_series_split_has_no_future_leakage():
+    # Cria uma série temporal com 100 dias consecutivos
+    dates = pd.date_range("2024-01-01", periods=100)
+    df = pd.DataFrame({"data": dates, "leitos": range(100)})
+
+    tscv = TimeSeriesSplit(n_splits=3, test_size=10)
+
+    for fold, (train_idx, test_idx) in enumerate(tscv.split(df)):
+        train_data = df.iloc[train_idx]
+        test_data = df.iloc[test_idx]
+
+        # PROVA MATEMÁTICA: O dia máximo de treino DEVE ser estritamente menor que o dia mínimo de teste
+        max_train_date = train_data["data"].max()
+        min_test_date = test_data["data"].min()
+
+        assert max_train_date < min_test_date, (
+            f"FALHA CIENTÍFICA no fold {fold}: Treino ({max_train_date}) "
+            f"invadiu o período de Teste ({min_test_date})!"
+        )
+</code></pre>
+      </section>
+
+      <!-- SEÇÃO 3: INTERPRETABILIDADE COM SHAP -->
+      <section>
+        <h2>3. Interpretabilidade: Explicando as Previsões com SHAP</h2>
+        <p>Em hospitais e políticas públicas de desastres, modelos "caixa-preta" raramente são aceitos por médicos e gestores do SUS. O <strong>SHAP (SHapley Additive exPlanations)</strong>, fundamentado na teoria dos jogos cooperativos, atribui a cada atributo seu impacto exato na previsão:</p>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Atributo Climático / Hospitalar</th>
+                <th>Valor do Atributo</th>
+                <th>Valor SHAP ($\phi_i$)</th>
+                <th>Interpretação Clínica e Operacional</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>chuva_acum_14d</code></td>
+                <td>280 mm (Chuva Extrema)</td>
+                <td><strong>+ 14.5 leitos</strong></td>
+                <td>O acumulado de chuva das últimas duas semanas é o fator dominante que eleva o risco de internações por leptospirose.</td>
+              </tr>
+              <tr>
+                <td><code>temperatura_min_3d</code></td>
+                <td>4.2 °C (Onda de Frio)</td>
+                <td><strong>+ 8.2 leitos</strong></td>
+                <td>A queda brusca de temperatura aumenta a sobrecarga de leitos pediátricos e geriátricos por bronquiolite e pneumonia.</td>
+              </tr>
+              <tr>
+                <td><code>leitos_ocupados_lag_1d</code></td>
+                <td>92% de Lotação</td>
+                <td><strong>+ 6.0 leitos</strong></td>
+                <td>Inércia hospitalar: leitos de UTI ocupados ontem permanecem ocupados hoje devido ao tempo médio de permanência.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 4: GUIA DEFINITIVO DA BANCA DE IC -->
+      <section>
+        <h2>4. O Guia Definitivo da Banca: 10 Perguntas e Respostas de Alto Nível</h2>
+        <p>Abaixo estão as 10 perguntas mais prováveis que um orientador, professor de Machine Learning ou epidemiologista fará durante o processo seletivo da bolsa de IC:</p>
+
+        <div class="question-box">
+          <h4>Banco de Respostas para a Entrevista</h4>
+          <ol>
+            <li>
+              <strong>Pergunta 1:</strong> <em>"O que motivou a escolha de Foundation Models para dados tabulares (TabPFN e MITRA) em vez de usar apenas XGBoost?"</em><br>
+              <strong>Resposta:</strong> "XGBoost e LightGBM são excelentes para cenários estáveis com grande volume histórico de dados, mas demandam engenharia manual exaustiva de features e tuning de hiperparâmetros. O TabPFN nos fornece uma aproximação bayesiana da PPD em modo zero-shot com quantis de incerteza nativos para pequenos dados, enquanto o MITRA aprende representações latentes profundas de interações complexas de colunas, permitindo comparar o estado da arte tradicional contra a nova fronteira de modelos fundacionais tabulares."
+            </li>
+            <li>
+              <strong>Pergunta 2:</strong> <em>"Por que o treino do TabPFN no notebook de vocês levou apenas 0.61 segundos?"</em><br>
+              <strong>Resposta:</strong> "Porque o TabPFN não realiza backpropagation nem ajuste iterativo de pesos durante o fit. Ele é um Transformer pré-treinado offline em milhões de priors sintéticas. O método fit apenas tokeniza e armazena os dados de treino na memória como um conjunto de suporte para o mecanismo de atenção."
+            </li>
+            <li>
+              <strong>Pergunta 3:</strong> <em>"E por que a predição demorou 171 segundos?"</em><br>
+              <strong>Resposta:</strong> "Porque toda a inferência bayesiana ocorre durante o predict. O Transformer concatena os tokens de treino com os tokens de teste e computa o mecanismo de auto-atenção, cuja complexidade é quadrática em relação ao número total de amostras ($O(N^2)$)."
+            </li>
+            <li>
+              <strong>Pergunta 4:</strong> <em>"Como vocês garantiram que o modelo não sofreu vazamento de dados (data leakage)?"</em><br>
+              <strong>Resposta:</strong> "Substituímos o split aleatório tradicional por validação temporal estrita usando TimeSeriesSplit com rolling origin, garantindo que o treino sempre anteceda o teste. Além disso, os lags climáticos e médias móveis foram calculados com janela fechada à esquerda (closed='left') e o pré-processamento foi encapsulado em um ColumnTransformer ajustado apenas no conjunto de treino."
+            </li>
+            <li>
+              <strong>Pergunta 5:</strong> <em>"Por que considerar lags de 7 a 21 dias para chuva no RS?"</em><br>
+              <strong>Resposta:</strong> "Porque o impacto de inundações em leitos clínicos não é instantâneo. O período de incubação da leptospirose pós-contato com água contaminada é de 5 a 14 dias, gerando um pico hospitalar entre a segunda e terceira semana após a enchente."
+            </li>
+            <li>
+              <strong>Pergunta 6:</strong> <em>"Por que não usar apenas a métrica R² para avaliar o modelo?"</em><br>
+              <strong>Resposta:</strong> "Em séries temporais com inércia, prever a média histórica garante um R² elevado em dias normais, mas mascara erros graves durante calamidades. Adotamos o WAPE (Weighted Absolute Percentage Error) e avaliamos o MAE e RMSE estratificados especificamente nos dias de pico de desastre."
+            </li>
+            <li>
+              <strong>Pergunta 7:</strong> <em>"Qual a diferença entre a execução do MITRA com fine_tune=False vs fine_tune=True?"</em><br>
+              <strong>Resposta:</strong> "Com fine_tune=False, usamos o MITRA em modo zero-shot com seus pesos congelados, economizando memória e tempo de treino. Com fine_tune=True, permitimos que os pesos da rede profunda se adaptem às características específicas da distribuição hospitalar local."
+            </li>
+            <li>
+              <strong>Pergunta 8:</strong> <em>"O que faz o parâmetro ag.max_memory_usage_ratio no AutoGluon?"</em><br>
+              <strong>Resposta:</strong> "O AutoGluon possui um verificador de segurança que cancela o treino se a previsão de consumo exceder a memória física disponível. O valor 2.0 flexibiliza essa margem para permitir o treinamento do MITRA sem interrupções preventivas."
+            </li>
+            <li>
+              <strong>Pergunta 9:</strong> <em>"Previsão de leitos é o mesmo que inferência causal?"</em><br>
+              <strong>Resposta:</strong> "Não. A modelagem preditiva identifica correlações e padrões defasados entre clima e internações para otimizar o planejamento de recursos do hospital. A inferência causal exigiria modelos contrafactuais para provar que a chuva foi a causa exclusiva e necessária de cada internação."
+            </li>
+            <li>
+              <strong>Pergunta 10:</strong> <em>"Qual a contribuição social esperada dessa pesquisa para o SUS no RS?"</em><br>
+              <strong>Resposta:</strong> "Permitir que hospitais universitários de referência (como HCPA e HUSM) e centrais de regulação de leitos do estado antecipem com 7 a 14 dias de antecedência a sobrecarga de leitos pós-desastres, permitindo abertura programada de vagas de retaguarda e remanejamento preventivo de equipes antes do colapso do atendimento."
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 5: CONCLUSÃO E PRÓXIMOS PASSOS -->
+      <section>
+        <h2>5. Conclusão da Trilha e Próximos Passos</h2>
+        <p>Com os 4 ciclos concluídos, você agora possui a bagagem teórica, matemática e metodológica necessária para se destacar na entrevista e liderar o desenvolvimento do projeto:</p>
+        
+        <div class="grid-2">
+          <div class="card">
+            <h4>Artefatos Prontos para Consulta</h4>
+            <ul>
+              <li><a href="./0001-conteudo-programatico-ml-tabular-leitos-rs.html">Lição 0001: Conteúdo Programático & Mapeamento de Bibliotecas</a></li>
+              <li><a href="./0002-ciclo-1-dados-temporais-lags-e-leakage.html">Lição 0002: Ciclo 1 (Séries Temporais & Lags)</a></li>
+              <li><a href="./0003-ciclo-2-anatomia-e-teoria-do-tabpfn.html">Lição 0003: Ciclo 2 (Anatomia do TabPFN)</a></li>
+              <li><a href="./0004-ciclo-3-anatomia-do-mitra-e-autogluon.html">Lição 0004: Ciclo 3 (MITRA & AutoGluon)</a></li>
+              <li><a href="./0005-ciclo-4-validacao-cientifica-tdd-e-defesa-banca.html">Lição 0005: Ciclo 4 (Validação, TDD & Banca)</a></li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h4>Ação no Repositório</h4>
+            <p>O próximo passo prático é iniciar a refatoração do código base em <code>fontes/untitled1.py</code>, criando os módulos limpos de dados e os testes automatizados com <code>pytest</code>.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div><a href="./0004-ciclo-3-anatomia-do-mitra-e-autogluon.html">← Lição Anterior (Ciclo 3: MITRA)</a></div>
+      <div><a href="./0006-ciclo-especial-tabfm-google-research.html">Próxima Lição (Especial: Google TabFM) →</a></div>
+    </footer>
+  </div>
+</body>
+</html>

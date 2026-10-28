@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Cheat Sheet: Google TabFM (Tabular Foundation Model)</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="lesson-meta">Cheat Sheet de Referência Rápida • Google TabFM</div>
+      <h1>Google TabFM Cheat Sheet: Arquitetura, SCMs e Variantes</h1>
+    </header>
+    <main>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Dimensão / Conceito</th><th>Especificação Técnica</th><th>Papel no Projeto de Leitos no RS</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Desenvolvedor / Ano</strong></td><td>Google Research (2026)</td><td>Paper: arXiv:2609.37959 (TabFM) / arXiv:2609.37989 (TabFM-Auto)</td></tr>
+            <tr><td><strong>Escala</strong></td><td>~400 Milhões de parâmetros</td><td>Modelo fundacional de grande porte com pesos congelados</td></tr>
+            <tr><td><strong>Pré-treino</strong></td><td>Modelos Causais Estruturais (SCMs) em DAGs</td><td>Aprende raciocínio relacional e cadeias causais invariantes</td></tr>
+            <tr><td><strong>Paradigma</strong></td><td>In-Context Learning (ICL) Tabular</td><td>$Treino + Teste$ processados em um único forward pass</td></tr>
+            <tr><td><strong>Ajuste Local</strong></td><td>Zero-Shot (sem treino no fit)</td><td>Não requer descida de gradiente nem busca de hiperparâmetros</td></tr>
+            <tr><td><strong>TabFM+</strong></td><td>Extensão com Ensembling e Multi-view</td><td>Combina múltiplas visões de atributos para maior robustez</td></tr>
+            <tr><td><strong>TabFM-Auto</strong></td><td>Loop fechado com Agente LLM (Gemini)</td><td>Agente automatiza limpeza, seleção de contexto e engenharia de lags</td></tr>
+            <tr><td><strong>Disponibilidade</strong></td><td>Hugging Face (PyTorch / JAX) & BigQuery</td><td>Pesquisa acadêmica aberta e inferência analítica via SQL</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><a href="../lessons/0006-ciclo-especial-tabfm-google-research.html">← Voltar para a Lição Especial (Google TabFM)</a></p>
+    </main>
+  </div>
+</body>
+</html>

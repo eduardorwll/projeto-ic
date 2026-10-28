@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Cheat Sheet: TabPFN (Prior-data Fitted Networks)</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="lesson-meta">Cheat Sheet de Referência Rápida • TabPFN</div>
+      <h1>TabPFN Cheat Sheet: Teoria, Parâmetros e Complexidade</h1>
+    </header>
+    <main>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Conceito / Parâmetro</th><th>Valor / Descrição</th><th>Impacto Prático no Projeto</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Arquitetura</strong></td><td>Transformer com mecanismo de auto-atenção</td><td>Aproximação da PPD em uma única passagem forward</td></tr>
+            <tr><td><strong>Pré-treino</strong></td><td>100% Sintético (Processos Gaussianos + DAGs causais)</td><td>Zero-shot learning; não precisa de dados humanos no pré-treino</td></tr>
+            <tr><td><strong>Complexidade Fit</strong></td><td>$O(1)$</td><td>Apenas armazena dados de treino como tokens de contexto</td></tr>
+            <tr><td><strong>Complexidade Predict</strong></td><td>$O(N_{total}^2)$</td><td>Inferência matemática pesada ocorre inteiramente no predict</td></tr>
+            <tr><td><code>ignore_pretraining_limits=True</code></td><td>Permite extrapolar o limite nativo de amostras</td><td>Usa subsampling ensemble para tabelas maiores</td></tr>
+            <tr><td><code>output_type="median"</code></td><td>Predição pontual via mediana da PPD</td><td>Robusto a outliers comparado à média quadrática</td></tr>
+            <tr><td><strong>Predição Probabilística</strong></td><td>Acesso a quantis ($Q_{0.10}, Q_{0.50}, Q_{0.90}$)</td><td>Estimativa de risco de colapso de leitos para o SUS</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><a href="../lessons/0003-ciclo-2-anatomia-e-teoria-do-tabpfn.html">← Voltar para a Lição do Ciclo 2 (TabPFN)</a></p>
+    </main>
+  </div>
+</body>
+</html>

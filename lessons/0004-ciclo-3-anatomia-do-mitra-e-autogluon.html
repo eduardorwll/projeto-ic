@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lição 0004: Ciclo 3 — Modelos Tabulares Profundos & AutoGluon (MITRA)</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="lesson-meta">Lição 0004 • Ciclo 3 de Aprendizado • Projeto IC</div>
+      <h1>Ciclo 3: Anatomia do MITRA & Foundation Models no AutoGluon</h1>
+      <p class="subtitle">Como modelos fundacionais tabulares profundos aprendem representações prévias de colunas e linhas, e como o AutoGluon gerencia recursos de memória e fine-tuning em larga escala.</p>
+      <div class="badges">
+        <span class="badge primary">MITRA Foundation Model</span>
+        <span class="badge primary">AutoGluon Tabular</span>
+        <span class="badge warm">Zero-Shot vs Fine-Tune</span>
+        <span class="badge warm">Alocação de Memória (RAM/VRAM)</span>
+        <span class="badge green">Deep Tabular Embeddings</span>
+      </div>
+    </header>
+
+    <main>
+      <!-- SEÇÃO 1: O QUE É O MITRA -->
+      <section>
+        <h2>1. O que é o MITRA e por que ele surgiu?</h2>
+        <p>No Ciclo 2, vimos que o <strong>TabPFN</strong> é revolucionário para pequenos datasets, mas enfrenta uma barreira física de complexidade de atenção ($O(N^2)$) quando o número de amostras ultrapassa dezenas de milhares de linhas.</p>
+        
+        <p>O <strong>MITRA</strong> surge como uma resposta a esse desafio dentro da nova geração de <strong>Foundation Models para Dados Tabulares (TFMs)</strong>:</p>
+
+        <div class="callout concept">
+          <div class="callout-title">Arquitetura Deep Tabular do MITRA</div>
+          <p>O MITRA projeta dados estruturados (numéricos e categóricos) em um espaço de <strong>embeddings contínuos densos</strong>. Ele combina representações semânticas de colunas e interações entre linhas, permitindo que o modelo capture dependências complexas (por exemplo, como a precipitação acumulada em 14 dias se correlaciona com a capacidade de oxigênio e leitos de UTI) sem demandar engenharia exaustiva de atributos manuais.</p>
+        </div>
+
+        <p>Integrado nativamente ao <strong>AutoGluon Tabular</strong> (da AWS/Amazon AI), o MITRA opera como um modelo especializado de ponta capaz de ser executado tanto em modo <em>Zero-Shot</em> quanto adaptado via <em>Fine-Tuning</em>.</p>
+      </section>
+
+      <!-- SEÇÃO 2: ANATOMIA DO CÓDIGO FONTE -->
+      <section>
+        <h2>2. Auditoria do Código: MitraWrapper em <code>fontes/untitled1.py</code></h2>
+        <p>Vamos dissecar cada linha do wrapper que você e seu colega implementaram:</p>
+
+        <pre><code class="language-python"># fontes/untitled1.py (linhas 132-157)
+class MitraWrapper:
+    def __init__(self, path="modelo_mithra_temp", max_rows=50000):
+        self.path = path
+        self.max_rows = max_rows
+        shutil.rmtree(self.path, ignore_errors=True)
+
+    def fit(self, train_data, target_col):
+        self.predictor = TabularPredictor(label=target_col, path=self.path)
+
+        hyperparameters = {
+            "MITRA": {
+                "ag.max_rows": self.max_rows,  # Limite de linhas processadas
+                "fine_tune": False,            # Execução Zero-Shot
+            }
+        }
+
+        self.predictor.fit(
+            train_data=train_data,
+            hyperparameters=hyperparameters,
+            ag_args_fit={"ag.max_memory_usage_ratio": 2.0}  # Margem de memória
+        )
+
+    def predict(self, test_data, target_col):
+        return self.predictor.predict(test_data).to_numpy()
+</code></pre>
+
+        <h3>Os Três Segredos Técnicos do MitraWrapper</h3>
+
+        <div class="grid-2">
+          <div class="card">
+            <h4>1. Gestão de Disco (shutil.rmtree)</h4>
+            <p>O AutoGluon serializa artefatos pesados (pesos de redes, checkpoints, pré-processadores) no diretório indicado em <code>path</code>. Ao executar <code>shutil.rmtree(self.path)</code> no <code>__init__</code>, garante-se que experimentos anteriores não contaminem o estado do modelo atual.</p>
+          </div>
+
+          <div class="card">
+            <h4>2. Zero-Shot vs Fine-Tuning</h4>
+            <p>Com <code>fine_tune: False</code>, o MITRA utiliza seus pesos pré-treinados congelados. Não há backpropagation demorado: ele processa a tabela em modo de inferência direta. Com <code>fine_tune: True</code>, o modelo ajusta seus pesos ao domínio hospitalar, demandando GPU dedicada e maior tempo de treino.</p>
+          </div>
+        </div>
+
+        <div class="callout warning">
+          <div class="callout-title">O Papel de ag.max_memory_usage_ratio: 2.0</div>
+          <p>O AutoGluon possui um mecanismo de segurança defensivo: se ele estimar que o modelo consumirá mais de 100% da RAM livre disponível no sistema, ele cancela o treinamento preventivamente para evitar o <em>OOM Killer</em> (falha fatal de falta de memória do sistema operacional).</p>
+          <p>Ao definir <code>ag_args_fit={"ag.max_memory_usage_ratio": 2.0}</code>, vocês instruíram o AutoGluon a relaxar esse threshold, permitindo alocar memória virtual de forma mais agressiva. Em um ambiente científico como o Google Colab ou servidor de pesquisa com swap/GPU, isso impede que o MITRA seja abortado prematuramente.</p>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 3: COMPARAÇÃO TRIANGULAR -->
+      <section>
+        <h2>3. A Tríade de Modelos do Projeto: Random Forest vs TabPFN vs MITRA</h2>
+        <p>Em um projeto de Iniciação Científica, o objetivo nunca é escolher um modelo "mágico", mas entender os <strong>trade-offs científicos</strong> de cada arquitetura:</p>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Critério Científico</th>
+                <th>RandomForestWrapper</th>
+                <th>TabPFNWrapper</th>
+                <th>MitraWrapper (AutoGluon)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Família Arquitetural</strong></td>
+                <td>Bagging de Árvores de Decisão</td>
+                <td>In-Context Bayesian Transformer</td>
+                <td>Deep Tabular Foundation Model</td>
+              </tr>
+              <tr>
+                <td><strong>Volume de Amostras Ideal</strong></td>
+                <td>Qualquer tamanho ($10^2$ a $10^6$)</td>
+                <td>Pequeno a Médio ($10^2$ a $10^4$)</td>
+                <td>Médio a Grande ($10^3$ a $10^5$)</td>
+              </tr>
+              <tr>
+                <td><strong>Tempo de Ajuste (Fit)</strong></td>
+                <td>Médio (construção de árvores)</td>
+                <td><strong>Ultrarrápido (0.61s — sem gradiente)</strong></td>
+                <td>Moderado (prepara embeddings e validações)</td>
+              </tr>
+              <tr>
+                <td><strong>Tempo de Inferência (Predict)</strong></td>
+                <td><strong>Ultrarrápido (milissegundos)</strong></td>
+                <td>Pesado (171s — atenção $O(N^2)$)</td>
+                <td>Moderado a Rápido em GPU</td>
+              </tr>
+              <tr>
+                <td><strong>Demanda de Recursos</strong></td>
+                <td>CPU pura; memória modesta</td>
+                <td>CPU potente ou GPU para inferência</td>
+                <td><strong>Demanda alta de RAM/VRAM</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Papel na Dissertação / Artigo</strong></td>
+                <td><strong>Baseline tradicional indispensável</strong></td>
+                <td><strong>Exploração de inferência bayesiana in-context</strong></td>
+                <td><strong>Estado da arte em Deep Tabular Learning</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 4: APLICAÇÃO NO RS -->
+      <section>
+        <h2>4. Aplicação Prática aos Hospitais do Rio Grande do Sul</h2>
+        <p>Como essa comparação se traduz em um cenário real de saúde pública?</p>
+
+        <div class="card">
+          <h4>Cenário de Desastre: Enchente de Maio de 2024 em Porto Alegre</h4>
+          <ul>
+            <li><strong>Fase Inicial do Desastre (Poucos Dados Históricos da Crise):</strong> Quando um evento climático sem precedentes acontece, existem poucos dados históricos de cheias dessa magnitude. O <strong>TabPFN</strong> se destaca por seu excelente desempenho <em>few-shot</em> e pela capacidade de estimar intervalos de incerteza (quantis preditivos) sem precisar de centenas de exemplos de enchentes anteriores.</li>
+            <li><strong>Fase de Estabilização e Longo Prazo:</strong> Conforme semanas e meses de dados de internações acumuladas se acumulam, o <strong>MITRA</strong> e o <strong>Random Forest/LightGBM</strong> ganham tração, capturando padrões sazonais amplos sem o gargalo de latência quadrática do Transformer in-context.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 5: PERGUNTAS PARA A BANCA -->
+      <section>
+        <h2>5. Perguntas de Fixação para a Banca (Ciclo 3)</h2>
+        <div class="question-box">
+          <h4>Simulação de Arguição Técnica</h4>
+          <ol>
+            <li><strong>Pergunta da Banca:</strong> <em>"Por que usar o MITRA através do AutoGluon em vez de implementar uma rede neural tabular manualmente em PyTorch?"</em><br>
+            <strong>Sua resposta:</strong> O AutoGluon encapsula o pipeline completo de engenharia de features tabulares, normalização automática de tipos mistos, tratamento de valores faltantes e estratégias de calibração de memória. Implementar manualmente exigiria semanas de engenharia de baixo nível sem garantia de generalização e estabilidade numérica.</li>
+            <li><strong>Pergunta da Banca:</strong> <em>"O que significa a flag <code>fine_tune: False</code> no seu código e qual o impacto no tempo de treino?"</em><br>
+            <strong>Sua resposta:</strong> Com <code>fine_tune: False</code>, operamos o MITRA em modo puramente <em>Zero-Shot</em>. Ele utiliza as representações já aprendidas no pré-treinamento sem atualizar seus pesos com gradientes locais, reduzindo o tempo de treino e o risco de <em>overfitting</em> em amostras pequenas.</li>
+            <li><strong>Pergunta da Banca:</strong> <em>"O que acontece se removermos <code>ag.max_memory_usage_ratio: 2.0</code> em uma máquina com pouca memória livre?"</em><br>
+            <strong>Sua resposta:</strong> O AutoGluon ativará sua checagem de segurança conservadora e abortará o treinamento antes de iniciar, lançando uma exceção de proteção de memória.</li>
+          </ol>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div><a href="./0003-ciclo-2-anatomia-e-teoria-do-tabpfn.html">← Lição Anterior (Ciclo 2: TabPFN)</a></div>
+      <div><a href="./0005-ciclo-4-validacao-cientifica-tdd-e-defesa-banca.html">Próxima Lição (Ciclo 4: Validação & Banca) →</a></div>
+    </footer>
+  </div>
+</body>
+</html>

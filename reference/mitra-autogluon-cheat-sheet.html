@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Cheat Sheet: MITRA & AutoGluon Tabular</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="lesson-meta">Cheat Sheet de Referência Rápida • MITRA & AutoGluon</div>
+      <h1>MITRA & AutoGluon Cheat Sheet: Parâmetros e Gestão de Memória</h1>
+    </header>
+    <main>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Configuração / Flag</th><th>Tipo / Padrão</th><th>Função no Código de Leitos (fontes/untitled1.py)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>TabularPredictor(label=..., path=...)</code></td><td>Instanciação AutoGluon</td><td>Define a coluna alvo e o diretório de serialização de checkpoints</td></tr>
+            <tr><td><code>"ag.max_rows": 50000</code></td><td>Inteiro / Limite de Linhas</td><td>Controla o volume máximo de registros alimentados ao modelo</td></tr>
+            <tr><td><code>"fine_tune": False</code></td><td>Booleano (Modo Zero-Shot)</td><td>Utiliza representações pré-treinadas congeladas, sem backprop</td></tr>
+            <tr><td><code>"fine_tune": True</code></td><td>Booleano (Modo Adaptação)</td><td>Ajusta pesos da rede profunda; exige GPU dedicada e mais tempo</td></tr>
+            <tr><td><code>ag.max_memory_usage_ratio: 2.0</code></td><td>Float / Multiplicador de RAM</td><td>Relaxa a barreira conservadora de OOM do AutoGluon</td></tr>
+            <tr><td><code>shutil.rmtree(self.path)</code></td><td>Limpeza de Sistema</td><td>Evita que artefatos de treinos antigos contaminem a nova execução</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><a href="../lessons/0004-ciclo-3-anatomia-do-mitra-e-autogluon.html">← Voltar para a Lição do Ciclo 3 (MITRA)</a></p>
+    </main>
+  </div>
+</body>
+</html>

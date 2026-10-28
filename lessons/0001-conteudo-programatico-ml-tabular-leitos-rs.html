@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lição 0001: Conteúdo Programático — ML Tabular & Leitos Hospitalares (RS)</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="lesson-meta">Lição 0001 • Projeto de Iniciação Científica • Ecossistema /teach</div>
+      <h1>Conteúdo Programático & Guia de Estudo:<br>Modelos Tabulares (TabPFN & MITRA) na Previsão de Leitos sob Crises Climáticas no RS</h1>
+      <p class="subtitle">Guia conceitual, teórico e prático para capacitação de bolsista de pesquisa, partindo da base em <code>fontes/untitled1.py</code> até a modelagem temporal avançada para o SUS.</p>
+      <div class="badges">
+        <span class="badge primary">TabPFN v1/v2</span>
+        <span class="badge primary">MITRA (AutoGluon)</span>
+        <span class="badge warm">Séries Temporais & Lags</span>
+        <span class="badge warm">Saúde Pública (RS)</span>
+        <span class="badge green">Iniciação Científica</span>
+        <span class="badge">TDD & Clean Code</span>
+      </div>
+    </header>
+
+    <main>
+      <!-- SEÇÃO 1: MISSÃO E DOMÍNIO -->
+      <section>
+        <h2>1. Missão da Pesquisa e Domínio de Aplicação</h2>
+        <p>Esta pesquisa investiga como modelos de aprendizado de máquina para dados tabulares podem prever a sobrecarga e a taxa de ocupação de leitos (clínicos e de UTI) em <strong>hospitais universitários e de ensino do Rio Grande do Sul</strong> (como o Hospital de Clínicas de Porto Alegre - <strong>HCPA</strong>, o Hospital Universitário de Santa Maria - <strong>HUSM</strong> e o Hospital Escola da <strong>UFPel</strong>) perante eventos climáticos extremos e mudanças climáticas.</p>
+
+        <div class="callout concept">
+          <div class="callout-title">O Papel do Bolsista de Pesquisa</div>
+          <p>Para obter aprovação e destaque na vaga de bolsa de IC, você precisa demonstrar domínio em três frentes inseparáveis:</p>
+          <ol>
+            <li><strong>Fundamentação Conceitual (Why-First):</strong> Saber explicar a matemática e o funcionamento interno dos modelos em vez de apenas chamar <code>model.fit()</code>.</li>
+            <li><strong>Integridade Metodológica em Saúde:</strong> Compreender a dinâmica de séries temporais clínicas e evitar armadilhas fatais como o <em>Data Leakage</em>.</li>
+            <li><strong>Capacidade de Defesa e Comunicação:</strong> Justificar escolhas metodológicas, explicar limitações e interpretar métricas perante a banca examinadora.</li>
+          </ol>
+        </div>
+
+        <h3>A Dinâmica de Defasagens (Lags) Epidemiológicas no RS</h3>
+        <p>Em desastres como as inundações históricas de maio de 2024 no Rio Grande do Sul ou ondas extremas de calor e frio, o impacto na demanda de leitos hospitalares não é pontual nem uniforme. Ele se desdobra em três horizontes temporais distintos:</p>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Horizonte Temporal</th>
+                <th>Defasagem (Lag)</th>
+                <th>Causas Clínicas e Diagnósticos no SUS</th>
+                <th>Unidade Impactada</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Impacto Imediato</strong></td>
+                <td>0 a 3 dias</td>
+                <td>Traumas diretos, resgates, hipotermia, afogamentos, descompensação aguda de doentes crônicos por interrupção de tratamento (falta de diálise, perda de insulina/refrigeração).</td>
+                <td>Emergência & UTI</td>
+              </tr>
+              <tr>
+                <td><strong>Impacto Intermediário</strong></td>
+                <td>7 a 21 dias</td>
+                <td>Doenças de veiculação hídrica pós-contato com água contaminada (pico clássico de <strong>leptospirose</strong> no RS), infecções bacterianas de pele e gastroenterites agudas.</td>
+                <td>Leitos Clínicos & Infectologia</td>
+              </tr>
+              <tr>
+                <td><strong>Impacto Secundário / Tardio</strong></td>
+                <td>15 a 45 dias</td>
+                <td>Proliferação de vetores em águas paradas (surtos de dengue), infecções respiratórias virais por aglomeração em abrigos, descompensações psiquiátricas (TEPT) e cardiovasculares.</td>
+                <td>Clínica Médica, Pediatria & UTI</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 2: BIBLIOTECAS E FERRAMENTAS -->
+      <section>
+        <h2>2. Mapeamento Completo de Bibliotecas & Ferramentas</h2>
+        <p>O projeto evolui a partir dos scripts originais em <code>fontes/untitled1.py</code> e <code>fontes/Untitled1.ipynb</code>, incorporando ferramentas científicas robustas:</p>
+
+        <div class="grid-2">
+          <!-- CARD 1: CÓDIGO ATUAL -->
+          <div class="card">
+            <h4>📦 Bibliotecas do Código Atual (fontes/)</h4>
+            <ul>
+              <li><strong><code>pandas</code>:</strong> Carga e estruturação tabular (<code>read_csv</code>). Usado atualmente com <code>pd.get_dummies</code> (comportamento a refatorar para pipelines).</li>
+              <li><strong><code>scikit-learn</code>:</strong>
+                <ul>
+                  <li><code>train_test_split</code>: Divisão treino/teste (diagnóstico de vazamento temporal).</li>
+                  <li><code>RandomForestRegressor</code>: Baseline tradicional de ensemble de árvores.</li>
+                  <li>Métricas: <code>mean_absolute_error</code>, <code>mean_squared_error</code>, <code>r2_score</code>.</li>
+                  <li><code>fetch_openml</code>: Obtenção do dataset de teste inicial (Ames Housing).</li>
+                </ul>
+              </li>
+              <li><strong><code>tabpfn</code> (Prior Labs):</strong>
+                <ul>
+                  <li><code>TabPFNRegressor</code>: Foundation model baseado em Transformers para regressão tabular com inferência <em>in-context</em>.</li>
+                  <li>Parâmetros: <code>ignore_pretraining_limits=True</code>, <code>output_type="median"</code>.</li>
+                </ul>
+              </li>
+              <li><strong><code>autogluon.tabular</code>:</strong>
+                <ul>
+                  <li><code>TabularPredictor</code>: Motor de AutoML e modelos fundacionais profundos.</li>
+                  <li>Hiperparâmetros: <code>{"MITRA": {"ag.max_rows": ..., "fine_tune": False}}</code>.</li>
+                  <li>Argumentos de memória: <code>ag_args_fit={"ag.max_memory_usage_ratio": 2.0}</code>.</li>
+                </ul>
+              </li>
+              <li><strong><code>time</code> & <code>shutil</code>:</strong> Medição de tempo de ajuste (fit) e predição (predict); gestão e limpeza de diretórios temporários.</li>
+            </ul>
+          </div>
+
+          <!-- CARD 2: FERRAMENTAS A INCORPORAR -->
+          <div class="card">
+            <h4>🚀 Novas Ferramentas a Incorporar na IC</h4>
+            <ul>
+              <li><strong><code>sklearn.model_selection.TimeSeriesSplit</code>:</strong> Validador temporal estrito com expansão de janela (rolling origin) para dados sequenciais de leitos.</li>
+              <li><strong><code>sklearn.compose.ColumnTransformer</code> & <code>OneHotEncoder</code>:</strong> Pipelines livres de data leakage, com <code>handle_unknown='ignore'</code>.</li>
+              <li><strong><code>LightGBM</code> / <code>CatBoost</code> / <code>XGBoost</code>:</strong> Ensembles de Gradient Boosting de ponta, necessários como baselines mandatórios para publicação.</li>
+              <li><strong><code>shap</code>:</strong> Valores de Shapley para interpretabilidade (explicar quais fatores climáticos e demográficos aumentaram a probabilidade de lotação de leitos).</li>
+              <li><strong><code>pytest</code>:</strong> Execução do ciclo TDD (Red-Green-Refactor) garantindo que nenhum código de produção seja escrito sem teste correspondente.</li>
+              <li><strong><code>CEMADEN / INMET APIs / Datasets</code>:</strong> Séries históricas de precipitação pluviométrica, temperatura média/máxima e umidade no RS.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 3: FUNDAMENTOS TEÓRICOS -->
+      <section>
+        <h2>3. Fundamentos Teóricos: Conceitos por Trás do Código</h2>
+
+        <!-- TABPFN -->
+        <h3>A. TabPFN (Prior-data Fitted Networks): O que é e por que funciona?</h3>
+        <p>O <strong>TabPFN</strong> (desenvolvido por Noah Hollmann e Prior Labs, publicado na <em>Nature</em> e no <em>ICLR</em>) introduz uma mudança radical no paradigma de Machine Learning para dados tabulares:</p>
+        
+        <div class="callout concept">
+          <div class="callout-title">Aproximação da Distribuição Preditiva Posterior (PPD)</div>
+          <p>Modelos tradicionais (como Random Forest ou Redes Neurais clássicas) ajustam pesos iterativamente sobre os dados do usuário através de otimização de gradiente ou divisão de impureza. O TabPFN, por outro lado, é um <strong>Transformer pré-treinado offline em milhões de datasets sintéticos</strong> gerados por Processos Gaussianos e redes Bayesianas causais.</p>
+          <p>Ele aprendeu a aproximar matematicamente a <em>Posterior Predictive Distribution (PPD)</em>:</p>
+          <pre><code>p(y_test | x_test, D_train) = ∫ p(y_test | x_test, θ) · p(θ | D_train) dθ</code></pre>
+          <p>O modelo não calcula a integral numericamente: o Transformer <strong>prevê diretamente</strong> essa distribuição em uma única passagem <em>forward</em>.</p>
+        </div>
+
+        <h4>O Enigma do Tempo: Por que Fit = 0.61s e Predict = 171.09s?</h4>
+        <p>No log de execução de <code>untitled1.py</code>, você observou que o <code>fit</code> levou apenas 0.61 segundos, enquanto o <code>predict</code> demorou quase 3 minutos. A explicação científica é simples:</p>
+        <ul>
+          <li><strong>No <code>fit(X_train, y_train)</code>:</strong> O TabPFN <em>não faz treino real</em>. Ele apenas memoriza e tokeniza a matriz de dados como o contexto de suporte (*support set*). O tempo gasto é praticamente $O(1)$.</li>
+          <li><strong>No <code>predict(X_test)</code>:</strong> Toda a computação pesada do Transformer acontece aqui. O modelo passa todos os tokens de treino juntos com os tokens de teste pela camada de auto-atenção. A complexidade de atenção é quadrática com o número de tokens ($O(N^2)$), demandando alta carga de CPU/GPU.</li>
+        </ul>
+
+        <!-- MITRA -->
+        <h3>B. MITRA (AutoGluon Tabular Foundation Model)</h3>
+        <p>O <strong>MITRA</strong> é um modelo fundacional para dados tabulares integrado ao ecossistema <strong>AutoGluon</strong>. Ele foi concebido para lidar com tabelas maiores e mais complexas do que o limite inicial de 1.000 a 10.000 amostras dos primeiros Transformers tabulares:</p>
+        <ul>
+          <li><strong>Deep Tabular Embeddings:</strong> Aprende representações latentes contínuas tanto para as colunas quanto para as linhas, capturando relações não lineares entre variáveis heterogêneas (ex.: cruzar chuva de 100mm com leitos de UTI disponíveis).</li>
+          <li><strong>Zero-Shot vs Fine-Tuning:</strong> Com <code>fine_tune: False</code>, ele utiliza os pesos congelados pré-treinados para inferência rápida. Com <code>fine_tune: True</code>, ele adapta as representações ao domínio hospitalar através de backpropagation supervisionado.</li>
+          <li><strong>Gerenciamento de Memória:</strong> O parâmetro <code>ag_args_fit={"ag.max_memory_usage_ratio": 2.0}</code> visto no seu código informa ao AutoGluon para relaxar o threshold conservador de RAM/VRAM, impedindo abortos prematuros em datasets volumosos.</li>
+        </ul>
+
+        <!-- TEMPORAL DATA LEAKAGE -->
+        <h3>C. Por que Séries Temporais em Saúde Não São i.i.d.?</h3>
+        <p>A maioria dos tutoriais de Machine Learning assume que os dados são <em>independentes e identicamente distribuídos (i.i.d.)</em>. Em hospitais, essa suposição é <strong>falsa</strong>:</p>
+        <div class="callout warning">
+          <div class="callout-title">O Perigo do Temporal Data Leakage (Look-Ahead Bias)</div>
+          <p>A ocupação de leitos amanhã depende fortemente de quem foi internado hoje e da chuva ocorrida na semana passada (autocorrelação temporal). Se usarmos <code>train_test_split(random_state=42)</code>, amostras futuras entram no conjunto de treino. O modelo "cola" do futuro para prever o passado. Essa prática invalida qualquer pesquisa científica séria.</p>
+          <p><strong>A Solução Padrão-Ouro:</strong> Usar <code>TimeSeriesSplit</code> ou corte temporal em blocos (ex.: treinar nos anos 2021-2023 e testar estritamente no ano da calamidade climática de 2024).</p>
+        </div>
+
+        <!-- MÉTRICAS -->
+        <h3>D. Métricas Hospitalares: Por que o R² Engana?</h3>
+        <p>Em dias normais, os hospitais operam em estabilidade (ex.: 85% a 90% de ocupação). Um modelo ingênuo que preveja sempre a média histórica obterá um $R^2$ alto (ex.: 0.88), mas errará completamente quando a enchente fizer a demanda saltar para 150%.</p>
+        <ul>
+          <li><strong>MAE (Mean Absolute Error):</strong> Erro médio em número absoluto de leitos (ex.: errou em média por 4 leitos). Intuitivo para os gestores do SUS.</li>
+          <li><strong>RMSE (Root Mean Squared Error):</strong> Penaliza quadraticamente erros grandes (útil para detectar falhas críticas em picos de desastre).</li>
+          <li><strong>WAPE (Weighted Absolute Percentage Error):</strong> $\frac{\sum |y - \hat{y}|}{\sum y}$. Mede a porcentagem real de erro em relação ao volume total de internações, sem a distorção por divisões por zero do MAPE clássico.</li>
+        </ul>
+      </section>
+
+      <!-- SEÇÃO 4: CRONOGRAMA EM 4 CICLOS -->
+      <section>
+        <h2>4. Cronograma de Estudo & Revisão (Os 4 Ciclos)</h2>
+
+        <ol class="step-list">
+          <li class="step-item">
+            <h4>Ciclo 1: Dados Temporais, Lags Climáticos & Zero Leakage</h4>
+            <p><strong>Meta:</strong> Eliminar o <code>train_test_split</code> aleatório, estruturar datasets temporais sintéticos e reais do RS com defasagens de 7, 14 e 21 dias (chuva e temperatura) e criar testes de não-vazamento.</p>
+            <p><strong>Entregável:</strong> <code>learning-records/0001-temporal-leakage-em-saude.md</code> e validador temporal estrito.</p>
+          </li>
+
+          <li class="step-item">
+            <h4>Ciclo 2: Anatomia e Teoria do TabPFN (Prior Labs)</h4>
+            <p><strong>Meta:</strong> Dominar a teoria matemática da PPD bayesiana, auto-atenção tabular e compreender os trade-offs de tempo de execução e memória. Refatorar o <code>TabPFNWrapper</code> para suporte a quantis de incerteza (previsão probabilística de leitos).</p>
+            <p><strong>Entregável:</strong> <code>reference/tabpfn-cheat-sheet.html</code> e testes unitários do wrapper.</p>
+          </li>
+
+          <li class="step-item">
+            <h4>Ciclo 3: Anatomia do MITRA & Modelos Fundacionais no AutoGluon</h4>
+            <p><strong>Meta:</strong> Compreender a arquitetura profunda do MITRA, embeddings de colunas, fine-tuning e isolamento de recursos de memória (RAM e GPU). Benchmark de performance comparativa contra Random Forest e TabPFN.</p>
+            <p><strong>Entregável:</strong> <code>reference/mitra-autogluon-cheat-sheet.html</code> e benchmark modular.</p>
+          </li>
+
+          <li class="step-item">
+            <h4>Ciclo 4: Validação Científica, TDD & Preparação para a Banca</h4>
+            <p><strong>Meta:</strong> Unificar o pipeline científico com LightGBM, Random Forest, TabPFN e MITRA; computar MAE, RMSE e WAPE; simular arguição e perguntas técnicas da banca avaliadora da bolsa de IC.</p>
+            <p><strong>Entregável:</strong> <code>learning-records/0004-guia-de-defesa-banca-ic.md</code> e suíte de testes 100% verde.</p>
+          </li>
+        </ol>
+      </section>
+
+      <!-- SEÇÃO 5: PERGUNTAS DE FIXAÇÃO -->
+      <section>
+        <h2>5. Perguntas de Fixação para a Banca de Pesquisa</h2>
+        <div class="question-box">
+          <h4>Autoavaliação (Storage Strength)</h4>
+          <ol>
+            <li>Se a banca perguntar: <em>"Por que vocês escolheram o TabPFN se o tempo de predição dele foi 300 vezes mais lento que o fit?"</em> — como você responde demonstrando conhecimento do Transformer e da inferência in-context?</li>
+            <li>Qual é a diferença fundamental entre o pré-treinamento do TabPFN (em dados puramente sintéticos) e o pré-treinamento de um LLM como o BERT/GPT (em textos humanos reais)?</li>
+            <li>Em uma enchente como a de 2024 no RS, por que prever leitos de UTI demanda janelas de lag diferentes de leitos clínicos de infectologia?</li>
+            <li>Por que o modelo tradicional de <code>pd.get_dummies</code> solto pode quebrar durante a inferência quando categorias novas ou raras surgem no conjunto de teste?</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 6: FONTES PRIMÁRIAS -->
+      <section>
+        <h2>6. Fontes Primárias Recomendadas</h2>
+        <ul>
+          <li><strong>TabPFN Nature Paper:</strong> Hollmann et al. (2025). <em>Accurate predictions on small data with a tabular foundation model</em>. Nature.</li>
+          <li><strong>Documentação Oficial AutoGluon Tabular:</strong> <a href="https://auto.gluon.ai" target="_blank">auto.gluon.ai</a> — Guias de modelos fundacionais e otimização de memória.</li>
+          <li><strong>Forecasting: Principles and Practice (3rd ed.):</strong> Rob J Hyndman & George Athanasopoulos — Capítulos de validação temporal e séries defasadas.</li>
+          <li><strong>Boletins Epidemiológicos de Desastres (SES-RS / CEMADEN):</strong> Monitoramento de leptospirose e doenças respiratórias nas cheias do RS.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      <div>Espaço de Aprendizado IC • Repositório <code>projeto-ic</code></div>
+      <div>Sessão orientada pela Tríade de Engenharia e Skill <code>teach</code></div>
+    </footer>
+  </div>
+</body>
+</html>

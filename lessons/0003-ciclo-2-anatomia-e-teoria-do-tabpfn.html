@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lição 0003: Ciclo 2 — Anatomia e Teoria dos Foundation Models Tabulares (TabPFN)</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="lesson-meta">Lição 0003 • Ciclo 2 de Aprendizado • Projeto IC</div>
+      <h1>Ciclo 2: Anatomia e Teoria do TabPFN (Prior-data Fitted Networks)</h1>
+      <p class="subtitle">Como um Transformer pré-treinado em dados sintéticos resolve problemas tabulares em segundos através de inferência bayesiana in-context, e por que seu fit é instantâneo mas a predição é custosa.</p>
+      <div class="badges">
+        <span class="badge primary">TabPFN Foundation Model</span>
+        <span class="badge primary">PPD Bayesiana</span>
+        <span class="badge warm">In-Context Learning</span>
+        <span class="badge warm">Complexidade O(N²)</span>
+        <span class="badge green">Predição Probabilística</span>
+      </div>
+    </header>
+
+    <main>
+      <!-- SEÇÃO 1: O QUE É O TABPFN -->
+      <section>
+        <h2>1. A Mudança de Paradigma: O que é o TabPFN?</h2>
+        <p>No machine learning tabular tradicional (como o <strong>RandomForestRegressor</strong> de <code>fontes/untitled1.py</code> ou modelos de Gradient Boosting como LightGBM), o algoritmo aprende do zero a cada novo conjunto de dados. Ele analisa as colunas, divide nós em árvores com base na redução de variância/impureza e ajusta seus parâmetros especificamente para aquela tabela.</p>
+        
+        <p>O <strong>TabPFN (Prior-data Fitted Network)</strong>, criado por Noah Hollmann et al. (Universidade de Freiburg & Prior Labs) e publicado na <em>Nature</em> e no <em>ICLR</em>, propõe algo completamente diferente:</p>
+
+        <div class="callout concept">
+          <div class="callout-title">Definição Formal</div>
+          <p>O TabPFN é um <strong>Foundation Model tabular baseado em arquitetura Transformer</strong>. Em vez de ser treinado no seu dataset de leitos ou de crédito, ele foi <strong>pré-treinado previamente offline em milhões de conjuntos de dados sintéticos</strong> gerados por Processos Gaussianos (GP), redes Bayesianas causais e funções de perda customizadas.</p>
+        </div>
+
+        <p>Durante essa fase de pré-treino exaustiva (que exigiu centenas de horas de supercomputadores), o modelo aprendeu a reconhecer padrões estatísticos fundamentais e a aproximar a fórmula da inferência bayesiana para regressão e classificação.</p>
+      </section>
+
+      <!-- SEÇÃO 2: A MATEMÁTICA DA PPD -->
+      <section>
+        <h2>2. A Matemática: A Posterior Predictive Distribution (PPD)</h2>
+        <p>Em estatística bayesiana, o objetivo padrão-ouro para prever o valor de um teste $y_{test}$ para uma entrada $x_{test}$, dado um conjunto de treino $D_{train} = \{(x_1, y_1), ..., (x_n, y_n)\}$, é a <strong>Distribuição Preditiva Posterior (PPD)</strong>:</p>
+
+        <pre><code>p(y_test | x_test, D_train) = ∫ p(y_test | x_test, θ) · p(θ | D_train) dθ</code></pre>
+
+        <p>Onde:</p>
+        <ul>
+          <li><code>p(y_test | x_test, θ)</code> é a verossimilhança dado um modelo parametrizado por $\theta$.</li>
+          <li><code>p(θ | D_train)</code> é a distribuição a posteriori dos parâmetros após observar os dados de treino.</li>
+        </ul>
+
+        <div class="callout warning">
+          <div class="callout-title">O Gargalo Histórico da PPD</div>
+          <p>Calcular essa integral analiticamente é impossível para a grande maioria dos problemas do mundo real. Métodos numéricos como MCMC (Markov Chain Monte Carlo) exigem milhares de iterações e levam horas para convergir.</p>
+          <p><strong>A sacada do TabPFN:</strong> O Transformer aprendeu a atuar como um aproximador universal dessa integral. Ele calcula uma aproximação direta da PPD em uma <strong>única passagem forward</strong> pela rede neural!</p>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 3: O ENIGMA DO TEMPO NO NOTEBOOK -->
+      <section>
+        <h2>3. Desvendando o Log do Notebook: Fit = 0.61s vs Predict = 171.09s</h2>
+        <p>No arquivo <code>fontes/untitled1.py</code>, vocês executaram o seguinte teste empírico:</p>
+
+        <pre><code class="language-python"># Execução em fontes/untitled1.py
+start_fit = time.time()
+model.fit(train, target_col)        # -> Levou 0.61 segundos!
+fit_time = time.time() - start_fit
+
+start_predict = time.time()
+previsoes = model.predict(test, target_col) # -> Levou 171.09 segundos!
+predict_time = time.time() - start_predict
+</code></pre>
+
+        <p>Por que essa disparidade absurda ocorreu? Como o treino foi quase instantâneo e a predição demorou quase três minutos?</p>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Fase do Código</th>
+                <th>O que Modelos Tradicionais Fazem (ex: Random Forest)</th>
+                <th>O que o TabPFN Faz (In-Context Transformer)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong><code>model.fit()</code></strong></td>
+                <td>Constrói 300 árvores, particiona nós recursivamente, calcula impurezas. Operação custosa de CPU.</td>
+                <td><strong>Não treina nada!</strong> Apenas armazena as amostras $(X_{train}, y_{train})$ na memória como o <em>Support Set</em>. Complexidade: $O(1)$ de treino.</td>
+              </tr>
+              <tr>
+                <td><strong><code>model.predict()</code></strong></td>
+                <td>Percorre as árvores já construídas com cada linha de teste. Operação rápida e paralela.</td>
+                <td><strong>Toda a computação ocorre aqui!</strong> As linhas de treino e as linhas de teste são tokenizadas juntas. O mecanismo de auto-atenção ($Attention(Q, K, V)$) processa todos os pares $(treino, teste)$ simultaneamente.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout concept">
+          <div class="callout-title">Atenção Quadrática: O Custo de O(N²)</div>
+          <p>A camada de atenção do Transformer compara cada token de teste contra todos os tokens de treino. À medida que o conjunto de teste ou treino cresce, o custo computacional e o uso de VRAM escalam quadraticamente ($N^2$). Por isso, o <code>predict</code> exigiu 171 segundos!</p>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 4: PARÂMETROS DO CÓDIGO ATUAL -->
+      <section>
+        <h2>4. Anatomia do Código: TabPFNWrapper em <code>fontes/untitled1.py</code></h2>
+        <p>Vamos analisar os parâmetros configurados no código de vocês:</p>
+
+        <pre><code class="language-python"># fontes/untitled1.py (linhas 114-116)
+class TabPFNWrapper:
+    def __init__(self):
+        self.model = TabPFNRegressor(
+            ignore_pretraining_limits=True, 
+            random_state=42
+        )
+</code></pre>
+
+        <ul>
+          <li><strong><code>ignore_pretraining_limits=True</code>:</strong> Originalmente, o TabPFN v1 foi pré-treinado com suporte estrito para até 1.000 amostras e 100 features. Ao ativar este parâmetro, permitimos que o modelo aceite datasets maiores utilizando janelas deslizantes ou ensemble de subamostras (*subsampling ensembling*). No TabPFN v2 (Prior Labs 2024/2025), essa capacidade foi expandida para até dezenas de milhares de amostras.</li>
+          <li><strong><code>output_type="median"</code> (linha 130):</strong> Como o TabPFN gera uma aproximação de distribuição probabilística completa (PPD), podemos pedir a média (<code>mean</code>), a mediana (<code>median</code>) ou <strong>quantis preditivos</strong>.</li>
+        </ul>
+
+        <h3>A Vantagem Clínica: Predição Probabilística de Leitos</h3>
+        <p>Em hospitais universitários, a gestão não quer saber apenas: <em>"Amanhã teremos 45 leitos ocupados"</em>. A direção quer saber:</p>
+        <div class="card">
+          <h4>Quantis de Risco para o SUS</h4>
+          <p>Podemos consultar os quantis da PPD do TabPFN:</p>
+          <ul>
+            <li><strong>Quantil 10% ($Q_{0.10}$):</strong> Cenário otimista (mínimo de ocupação esperado).</li>
+            <li><strong>Quantil 50% ($Q_{0.50}$):</strong> Mediana (previsão central mais provável).</li>
+            <li><strong>Quantil 90% ($Q_{0.90}$):</strong> Cenário crítico de sobrecarga. Se $Q_{0.90} \ge 100\%$ da capacidade instalada, o comitê de crise hospitalar deve ser acionado preventivamente para abrir leitos de retaguarda.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 5: COMPARAÇÃO TABULAR -->
+      <section>
+        <h2>5. Comparativo de Arquiteturas: Quando Usar o TabPFN?</h2>
+        
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Dimensão</th>
+                <th>Random Forest</th>
+                <th>LightGBM / XGBoost</th>
+                <th>TabPFN (Prior Labs)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Mecanismo Central</strong></td>
+                <td>Bagging de árvores de decisão</td>
+                <td>Boosting de gradiente sequencial</td>
+                <td>Transformer In-Context com PPD Bayesiana</td>
+              </tr>
+              <tr>
+                <td><strong>Pré-requisito de Treino</strong></td>
+                <td>Ajuste a cada tabela</td>
+                <td>Ajuste + HPO (Tuning fino)</td>
+                <td>Zero-shot (Pesos universais já treinados)</td>
+              </tr>
+              <tr>
+                <td><strong>Desempenho em Poucos Dados (&lt; 2.000 linhas)</strong></td>
+                <td>Regular a Bom</td>
+                <td>Propenso a overfitting sem tuning</td>
+                <td><strong>Estado da Arte (Vence a maioria dos baselines)</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Desempenho em Big Data (&gt; 50.000 linhas)</strong></td>
+                <td>Escala razoavelmente</td>
+                <td><strong>Excelente e veloz</strong></td>
+                <td>Lento na predição; exige subsampling</td>
+              </tr>
+              <tr>
+                <td><strong>Incerteza e Quantis</strong></td>
+                <td>Difícil (exige florestas quantílicas)</td>
+                <td>Exige treinar um modelo por quantil</td>
+                <td><strong>Nativa e instantânea na PPD</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 6: PERGUNTAS DE FIXAÇÃO PARA BANCA -->
+      <section>
+        <h2>6. Perguntas de Fixação para a Banca (Ciclo 2)</h2>
+        <div class="question-box">
+          <h4>Simulação de Arguição Técnica</h4>
+          <ol>
+            <li><strong>Pergunta da Banca:</strong> <em>"O TabPFN precisa ver dados reais de hospitais para ser pré-treinado?"</em><br>
+            <strong>Sua resposta:</strong> Não. O pré-treino do TabPFN é puramente sintético, baseado em Processos Gaussianos e grafos bayesianos. Ele aprendeu a matemática geral da regressão e classificação, aplicando-a <em>zero-shot</em> aos dados do hospital via aprendizado em contexto.</li>
+            <li><strong>Pergunta da Banca:</strong> <em>"Por que não usamos apenas o TabPFN e descartamos o Random Forest?"</em><br>
+            <strong>Sua resposta:</strong> Porque em ciência da computação e saúde pública, devemos considerar o trade-off de latência e escala. Se o hospital tiver 100.000 registros históricos de internações, o custo computacional de inferência do TabPFN se torna proibitivo sem técnicas de particionamento, enquanto o Random Forest ou LightGBM respondem em milissegundos.</li>
+            <li><strong>Pergunta da Banca:</strong> <em>"Como você explicaria o que significa <code>output_type='median'</code> em termos de robustez a outliers de calamidade?"</em><br>
+            <strong>Sua resposta:</strong> A mediana é menos suscetível a valores extremos pontuais (outliers) do que a média quadrática, sendo especialmente vantajosa em períodos de choque ou transição de dados hospitalares.</li>
+          </ol>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div><a href="./0002-ciclo-1-dados-temporais-lags-e-leakage.html">← Lição Anterior (Ciclo 1: Lags & Leakage)</a></div>
+      <div><a href="./0004-ciclo-3-anatomia-do-mitra-e-autogluon.html">Próxima Lição (Ciclo 3: MITRA & AutoGluon) →</a></div>
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Jupyter Notebook Checkpoints & Cache
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# Virtual Environments
+venv/
+.venv/
+env/
+
+# AutoGluon & Temporary Model Weights / Runs
+modelo_mithra_temp/
+AutogluonModels/
+*.log
+
+# Datasets & Temp CSVs
+credito.csv
+*.tmp
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Cheat Sheet: Validação Temporal & Métricas Hospitalares</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="lesson-meta">Cheat Sheet de Referência Rápida • Validação & Métricas</div>
+      <h1>Validação Temporal & Métricas em Saúde: Cheat Sheet</h1>
+    </header>
+    <main>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Técnica / Métrica</th><th>Fórmula / Mecânica</th><th>Por que é Obrigatória em Saúde Pública?</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>TimeSeriesSplit</strong></td><td>$Treino_{0..t} \to Teste_{t+1..t+k}$</td><td>Garante que o futuro nunca seja usado para prever o passado</td></tr>
+            <tr><td><strong>Lags Fechados à Esquerda</strong></td><td><code>rolling(window=W, closed='left')</code></td><td>Impede que a chuva ou internação do próprio dia vaze para o acumulado</td></tr>
+            <tr><td><strong>ColumnTransformer</strong></td><td>Fit estrito em $Treino$</td><td>Evita que categorias raras de teste gerem vazamento ou colapso de colunas</td></tr>
+            <tr><td><strong>MAE</strong></td><td>$\frac{1}{n} \sum |y - \hat{y}|$</td><td>Erro médio na unidade real de leitos hospitalares (compreensível para médicos)</td></tr>
+            <tr><td><strong>RMSE</strong></td><td>$\sqrt{\frac{1}{n} \sum (y - \hat{y})^2}$</td><td>Penaliza severamente desvios grandes em dias de catástrofe</td></tr>
+            <tr><td><strong>WAPE</strong></td><td>$\frac{\sum |y - \hat{y}|}{\sum y}$</td><td>Percentual ponderado de erro que não sofre divisão por zero como o MAPE</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><a href="../lessons/0002-ciclo-1-dados-temporais-lags-e-leakage.html">← Voltar para a Lição do Ciclo 1 (Dados Temporais & Lags)</a></p>
+    </main>
+  </div>
+</body>
+</html>
